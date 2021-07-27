@@ -34,7 +34,7 @@ pub enum DataNexusInstruction {
     /// `[w]` Authority
     /// `[w]` Owner/Access Account
     /// `[w]` System Program
-    InitUserAccount(Account),
+    InitUserAccount(AccountType),
 
     /// Initialize Dataset Account
     ///
