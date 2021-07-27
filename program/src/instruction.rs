@@ -32,7 +32,6 @@ pub enum DataNexusInstruction {
     ///
     /// `[w,s]` Payer Account
     /// `[w]` Authority
-    /// `[w]` Owner/Access Account
     /// `[w]` System Program
     InitUserAccount(AccountType),
 

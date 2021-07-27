@@ -6,7 +6,7 @@ use solana_program::{
 
 use crate::error::DataNexusError::InvalidInstruction;
 
-use std::convert::TryInto;
+use std::{convert::TryInto, mem::size_of};
 
 pub struct OwnerState {
     pub is_initialized: bool,
@@ -76,14 +76,13 @@ impl Pack for OwnerState {
     }
 }
 
-pub struct AccessHeader {
+pub struct AccessState {
     pub is_initialized: bool,
     pub pointer: Option<Pubkey>,
+    pub datasets: [AccessInfo; 128],
 }
-// AccessState = AccessHeader + [AccessInfo; 128]
-// Account size will be AccessHeader::LEN + AccessInfo::LEN * 128
+
 pub struct AccessInfo {
-    pub is_initialized: bool,
     pub hash: [u8; 32],
     pub key: [u8; 32],
     pub shared_from: Pubkey,
@@ -96,21 +95,20 @@ impl IsInitialized for AccessHeader {
     }
 }
 
-impl IsInitialized for AccessInfo {
-    fn is_initialized(&self) -> bool {
-        self.is_initialized
-    }
-}
+impl Sealed for AccessState {}
 
-impl Sealed for AccessHeader {}
-
-impl Sealed for AccessInfo {}
-
-impl Pack for AccessHeader {
-    const LEN: usize = 33;
+impl Pack for AccessState {
+    const LEN: usize = 33 + (128 * 80);
     fn pack_into_slice(&self, dst: &mut [u8]) {
         dst[0] = self.is_initialized as u8;
-        dst[1..Self::LEN].copy_from_slice(self.pointer.as_ref());
+        dst[1..33].copy_from_slice(self.pointer.as_ref());
+        dst[33..Self::LEN].copy_from_slice({
+            let dataset_vec = Vec::with_capacity(Self::LEN - 33);
+            for dataset in self.datasets {
+                dataset_vec.push(dataset.pack())
+            }
+            dataset_vec[..]
+        })
     }
 
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
@@ -120,38 +118,36 @@ impl Pack for AccessHeader {
             _ => return Err(ProgramError::InvalidAccountData),
         };
 
-        let pointer = Pubkey::new_from_array(src[1..Self::LEN].try_into().unwrap());
+        let pointer = Pubkey::new_from_array(src[1..33].try_into().unwrap());
+
+        let datasets = AccessInfo::unpack(src[33..Self::LEN])?;
 
         Ok(Self {
             is_initialized,
             pointer,
+            datasets,
         })
     }
 }
 
-impl Pack for AccessInfo {
-    const LEN: usize = 81;
-    fn pack_into_slice(&self, dst: &mut [u8]) {
-        dst[0] = self.is_initialized as u8;
-        dst[1..33] = self.copy_from_slice(&self.hash);
-        dst[33..65] = self.copy_from_slice(&self.key);
-        dst[65..73] = self.copy_from_slice(&self.shared_from.to_bytes());
-        dst[73..81] = self.copy_from_slice(&self.share_limit.to_le_bytes());
+impl AccessInfo {
+    fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
+        buf.extend_from_slice(&self.hash);
+        buf.extend_from_slice(&self.key);
+        buf.extend_from_slice(self.shared_from.as_ref());
+        buf.extend_from_slice(&self.share_limit.to_le_bytes());
+
+        buf
     }
 
-    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let is_initialized = match src[0] {
-            0 => false,
-            1 => true,
-            _ => return Err(ProgramError::InvalidAccountData),
-        };
-        let hash: [u8; 32] = src[1..33].try_into().unwrap();
-        let key: [u8; 32] = src[33..65].try_into().unwrap();
-        let shared_from = Pubkey::from_array(&src[65..73].try_into().unwrap());
-        let share_limit = u64::from_le_bytes(&src[73..81].try_into().unwrap());
+    fn unpack(data: &[u8]) -> Result<Self, ProgramError> {
+        let hash: [u8; 32] = data[..32].try_into().unwrap();
+        let key: [u8; 32] = src[32..64].try_into().unwrap();
+        let shared_from = Pubkey::new_from_array(&src[64..72].try_into().unwrap());
+        let share_limit = u64::from_le_bytes(&src[72..80].try_into().unwrap());
 
         Ok(Self {
-            is_initialized,
             hash,
             key,
             shared_from,
