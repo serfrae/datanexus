@@ -87,9 +87,9 @@ impl AdminInstruction {
             Self::InitUserAccount(_) => {
                 buf.push(0);
                 if let Self::InitUserAccount(AccountType::Owner) = self {
-                    buf.push(1);
+                    buf.push(0);
                 } else {
-                    buf.push(2);
+                    buf.push(1);
                 }
             }
             Self::InitDataAccount { hash } => {
@@ -101,6 +101,7 @@ impl AdminInstruction {
                 buf.extend_from_slice(hash);
                 match params {
                     Params::Init(key, value, share_limit, ref_data) => {
+                        buf.push(0);
                         buf.extend_from_slice(key);
                         buf.extend_from_slice(value.to_le_bytes());
                         buf.extend_from_slice(share_limit.to_le_bytes());
@@ -109,10 +110,22 @@ impl AdminInstruction {
                             None => buf.extend_from_slice([0u8; 32]),
                         }
                     }
-                    Params::Key(k) => buf.extend_from_slice(k),
-                    Params::Value(v) => buf.extend_from_slice(v.to_le_bytes()),
-                    Params::ShareLimit(n) => buf.extend_from_slice(n.to_le_bytes()),
-                    Params::ReferenceData(pk) => buf.extend_from_slice(pk.to_bytes()),
+                    Params::Key(k) => {
+                        buf.push(1);
+                        buf.extend_from_slice(k);
+                    }
+                    Params::Value(v) => {
+                        buf.push(2);
+                        buf.extend_from_slice(v.to_le_bytes());
+                    }
+                    Params::ShareLimit(n) => {
+                        buf.push(3);
+                        buf.extend_from_slice(n.to_le_bytes());
+                    }
+                    Params::ReferenceData(pk) => {
+                        buf.push(4);
+                        buf.extend_from_slice(pk.to_bytes());
+                    }
                     _ => return Err(InvalidInstruction.into()),
                 }
             }
@@ -129,7 +142,93 @@ impl AdminInstruction {
         }
         buf
     }
-    pub fn unpack(data: &[u8]) -> Result<Self, ProgramError> {}
+    pub fn unpack(data: &[u8]) -> Result<Self, ProgramError> {
+        let (tag, rest) = data.split_first().ok_or(InvalidInstruction)?;
+
+        match tag {
+            0 => Ok(match rest {
+                0 => Self::InitUserAccount(AccountType::Owner),
+                1 => Self::InitUserAccount(AccountType::Access),
+                _ => return Err(InvalidInstruction.into()),
+            }),
+            1 => {
+                let hash = rest.get(..).unwrap();
+                Ok(Self::InitDataAccount { hash })
+            }
+            2 => {
+                let (tag, rest) = rest.split_first().ok_or(InvalidInstruction)?;
+                let params = match tag {
+                    0 => {
+                        let key = Params::Key(rest.get(..32).unwrap());
+                        let value = Params::Value(
+                            rest
+                            .get(32..40)
+                            .and_then(|slice| slice.try_into().ok())
+                            .map(u64::from_le_bytes)
+                            .ok_or(InvalidInstruction)?
+                            );
+                        let share_limit = Params::ShareLimit(
+                            rest
+                                .get(40..42)
+                                .and_then(|slice| slice.try_into().ok())
+                                .map(u16::from_le_bytes)
+                                .ok_or(InvalidInstruction)?
+                            );
+                        let ref_data = Params::ReferenceData(
+                            rest
+                            .get(42..50)
+                            .and_then(|slice| slice.try_into().ok())
+                            .map(Pubkey::new)
+                            .ok_or(InvalidInstruction)?
+                        );
+                        Params::Init(key, value, share_limit, ref_data)
+                    }
+                    1 => Params::Key(rest.get(..).unwrap()),
+                    2 => Params::Value(
+                        rest
+                        .get(..)
+                        .and_then(|slice| slice.try_into().ok())
+                        .map(u64::from_le_bytes)
+                        .ok_or(InvalidInstruction)?
+                    ),
+                    3 => Params::ShareLimit(
+                        rest
+                            .get(..)
+                            .and_then(|slice| slice.try_into().ok())
+                            .map(u16::from_le_bytes)
+                            .ok_or(InvalidInstruction)?
+                    ),
+                    4 => Params::ReferenceData(
+                        rest
+                        .get(..)
+                        .and_then(|slice| slice.try_into().ok())
+                        .unwrap()
+                    ),
+                    _ => return Err(InvalidInstruction.into()),
+                };
+                Ok(Self::SetDataParams { hash, params })
+            }
+            3 => {
+                let hash = rest
+                    .get(..32)
+                    .and_then(|slice| slice.try_into().ok())
+                    .unwrap();
+                let amount = rest
+                    .get(32..40)
+                    .and_then(|slice| slice.try_into().ok())
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Ok(Self::PurchaseAccess { hash, amount })
+            }
+            4 => Ok(Self::ShareAccess {
+                rest
+                    .get(..)
+                    .and_then(|slice| slice.try_into().ok())
+                    .unwrap()
+            }),
+            _ => return Err(InvalidInstruction.into()),
+        }
+    }
 }
 
 /// Creates an `InitUserAccount` instruction
