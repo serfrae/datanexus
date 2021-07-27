@@ -1,0 +1,24 @@
+[package]
+name = "datanexus"
+description = "DataNexus on-chain program"
+authors = ["Andrew Fraser <andrew@synchrony-labs.io>"]
+version = "0.1.0"
+edition = "2018"
+
+[features]
+test-bpf = []
+
+[dependencies]
+solana-program = "1.7.8"
+solana-program-test = { version = "1.7.8", optional = true }
+spl-token = { version = "3.1.0", features = ["no-entrypoint"] }
+num-derive = "0.3.3"
+num-traits = "0.2.14"
+thiserror = "1.0.26"
+
+[dev-dependencies]
+solana-program = "1.7.8"
+solana-program-test = "1.7.8"
+
+[lib]
+crate-type = ["cdy-lib", "lib"]
