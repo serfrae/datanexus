@@ -80,7 +80,55 @@ pub enum DataNexusInstruction {
 }
 
 impl AdminInstruction {
-    pub fn pack(&self) -> Vec<u8> {}
+    pub fn pack(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size_of::<Self>());
+
+        match self {
+            Self::InitUserAccount(_) => {
+                buf.push(0);
+                if let Self::InitUserAccount(AccountType::Owner) = self {
+                    buf.push(1);
+                } else {
+                    buf.push(2);
+                }
+            }
+            Self::InitDataAccount { hash } => {
+                buf.push(1);
+                buf.extend_from_slice(hash);
+            }
+            Self::SetDataParams { hash, params } => {
+                buf.push(2);
+                buf.extend_from_slice(hash);
+                match params {
+                    Params::Init(key, value, share_limit, ref_data) => {
+                        buf.extend_from_slice(key);
+                        buf.extend_from_slice(value.to_le_bytes());
+                        buf.extend_from_slice(share_limit.to_le_bytes());
+                        match ref_data {
+                            Some(d) => buf.extend_from_slice(d.to_bytes()),
+                            None => buf.extend_from_slice([0u8; 32]),
+                        }
+                    }
+                    Params::Key(k) => buf.extend_from_slice(k),
+                    Params::Value(v) => buf.extend_from_slice(v.to_le_bytes()),
+                    Params::ShareLimit(n) => buf.extend_from_slice(n.to_le_bytes()),
+                    Params::ReferenceData(pk) => buf.extend_from_slice(pk.to_bytes()),
+                    _ => return Err(InvalidInstruction.into()),
+                }
+            }
+            Self::PurchaseAccess { hash, amount } => {
+                buf.push(3);
+                buf.extend_from_slice(hash);
+                buf.extend_from_slice(amount.to_le_bytes());
+            }
+            Self::ShareAccess { hash } => {
+                buf.push(4);
+                buf.extend_from_slice(hash);
+            }
+            _ => return Err(InvalidInstruction.into()),
+        }
+        buf
+    }
     pub fn unpack(data: &[u8]) -> Result<Self, ProgramError> {}
 }
 
