@@ -14,7 +14,7 @@ pub fn datanexus_entrypoint(
     msg!("DataNexus Entrypoint");
 
     if let Err(error) = Processor::process_instruction(program_id, accounts, data) {
-        print.error::<DSError>();
+        print.error::<DataNexusError>();
         return Err(error);
     }
 
