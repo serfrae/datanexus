@@ -264,5 +264,33 @@ impl Processor {
         hash: [u8; 32],
     ) -> ProgramResult {
         let accounts_iter = &mut accounts.iter();
+
+        let user_authority = next_account_info(accounts_iter)?;
+        let user_access_account = next_account_info(accounts_iter)?;
+        let recipient_authority = next_account_info(accounts_iter)?;
+        let recipient_access_account = next_account_info(accounts_iter)?;
+        let dataset_account = next_account_info(accounts_iter)?;
+
+        let dataset_account_data = dataset_account.data.borrow();
+        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+        let user_access_data = user_access_account.data.borrow_mut();
+        let unpacked_user_access_data = AccessState::unpack_from_slice(user_access_account_data)?;
+        let recipient_access_data = recipient_access_account.data.borrow_mut();
+        let unpacked_recipient_access_data = AccessState::unpack_from_slice(recipient_access_data)?;
+
+        let new_access = AccessInfo {
+            hash,
+            key: unpacked_user_access_data.key,
+            shared_from: user_authority.key,
+            share_limit: 0,
+        };
+
+        unpacked_recipient_access_data.datasets.push(new_access);
+        unpacked_recipient_access_data.pack_into_slice(recipient_access_data);
+
+        unpacked_user_access_data.share_limit -= 1;
+        unpacked_user_access_data.pack_into_slice(user_access_data);
+
+        Ok(())
     }
 }

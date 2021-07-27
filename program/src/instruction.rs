@@ -78,7 +78,7 @@ pub enum DataNexusInstruction {
     ShareAccess { hash: [u8; 32] },
 }
 
-impl AdminInstruction {
+impl DataNexusInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
 
@@ -161,48 +161,42 @@ impl AdminInstruction {
                     0 => {
                         let key = Params::Key(rest.get(..32).unwrap());
                         let value = Params::Value(
-                            rest
-                            .get(32..40)
-                            .and_then(|slice| slice.try_into().ok())
-                            .map(u64::from_le_bytes)
-                            .ok_or(InvalidInstruction)?
-                            );
+                            rest.get(32..40)
+                                .and_then(|slice| slice.try_into().ok())
+                                .map(u64::from_le_bytes)
+                                .ok_or(InvalidInstruction)?,
+                        );
                         let share_limit = Params::ShareLimit(
-                            rest
-                                .get(40..42)
+                            rest.get(40..42)
                                 .and_then(|slice| slice.try_into().ok())
                                 .map(u16::from_le_bytes)
-                                .ok_or(InvalidInstruction)?
-                            );
+                                .ok_or(InvalidInstruction)?,
+                        );
                         let ref_data = Params::ReferenceData(
-                            rest
-                            .get(42..50)
-                            .and_then(|slice| slice.try_into().ok())
-                            .map(Pubkey::new)
-                            .ok_or(InvalidInstruction)?
+                            rest.get(42..50)
+                                .and_then(|slice| slice.try_into().ok())
+                                .map(Pubkey::new)
+                                .ok_or(InvalidInstruction)?,
                         );
                         Params::Init(key, value, share_limit, ref_data)
                     }
                     1 => Params::Key(rest.get(..).unwrap()),
                     2 => Params::Value(
-                        rest
-                        .get(..)
-                        .and_then(|slice| slice.try_into().ok())
-                        .map(u64::from_le_bytes)
-                        .ok_or(InvalidInstruction)?
+                        rest.get(..)
+                            .and_then(|slice| slice.try_into().ok())
+                            .map(u64::from_le_bytes)
+                            .ok_or(InvalidInstruction)?,
                     ),
                     3 => Params::ShareLimit(
-                        rest
-                            .get(..)
+                        rest.get(..)
                             .and_then(|slice| slice.try_into().ok())
                             .map(u16::from_le_bytes)
-                            .ok_or(InvalidInstruction)?
+                            .ok_or(InvalidInstruction)?,
                     ),
                     4 => Params::ReferenceData(
-                        rest
-                        .get(..)
-                        .and_then(|slice| slice.try_into().ok())
-                        .unwrap()
+                        rest.get(..)
+                            .and_then(|slice| slice.try_into().ok())
+                            .unwrap(),
                     ),
                     _ => return Err(InvalidInstruction.into()),
                 };
@@ -221,10 +215,10 @@ impl AdminInstruction {
                 Ok(Self::PurchaseAccess { hash, amount })
             }
             4 => Ok(Self::ShareAccess {
-                rest
+                hash: rest
                     .get(..)
                     .and_then(|slice| slice.try_into().ok())
-                    .unwrap()
+                    .unwrap(),
             }),
             _ => return Err(InvalidInstruction.into()),
         }
