@@ -226,18 +226,18 @@ impl DataNexusInstruction {
 }
 
 /// Creates an `InitUserAccount` instruction
-pub fn init_owner_account(
+pub fn init_user_account(
     program_id: Pubkey,
     payer: Pubkey,
     authority: Pubkey,
-    owner_account: Pubkey,
+    user_account: Pubkey,
     system_program: Pubkey,
     account_type: AccountType,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(payer, true),
         AccountMeta::new(authority, false),
-        AccountMeta::new(owner_account, false),
+        AccountMeta::new(user_account, false),
         AccountMeta::new_readonly(system_program, false),
     ];
 
@@ -302,6 +302,7 @@ pub fn set_data_params(
 pub fn purchase_access(
     program_id: Pubkey,
     user_authority: Pubkey,
+    user_access_account: Pubkey,
     user_token_account: Pubkey,
     owner_authority: Pubkey,
     owner_token_account: Pubkey,
@@ -312,6 +313,7 @@ pub fn purchase_access(
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(user_authority, true),
+        AccountMeta::new(user_access_account, false),
         AccountMeta::new(user_token_account, false),
         AccountMeta::new(owner_authority, false),
         AccountMeta::new(owner_token_account, false),
