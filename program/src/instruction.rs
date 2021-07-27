@@ -35,7 +35,7 @@ pub enum AdminInstruction {
         hash: [u8; 32],
         price: u64,
         share_limit: u64,
-        references: Vec<[u8; 32]>,
+        reference_data: [u8; 32],
     },
 
     /// Close Account
