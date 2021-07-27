@@ -19,6 +19,31 @@ impl Processor {
         accounts: &[AccountInfo],
         data: &[u8],
     ) -> ProgramResult {
+        let instruction = DataNexusInstruction::unpack(data)?;
+
+        match instruction {
+            DataNexusInstruction::InitUserAccount(AccountType::Owner) => {
+                Self::process_init_owner_account(program_id, accounts)
+            }
+            DataNexusInstruction::InitUserAccount(AccountType::Access) => {
+                Self::process_init_access_account(program_id, accounts)
+            }
+            DataNexusInstruction::InitDataAccount { hash } => {
+                Self::process_init_data_account(program_id, accounts, hash)
+            }
+            DataNexusInstruction::SetDataParams { hash, params } => {
+                Self::process_set_params(program_id, accounts, hash, params)
+            }
+            DataNexusInstruction::PurchaseAccess { hash, amount } => {
+                Self::process_purchase_access(program_id, accounts, hash, amount)
+            }
+            DataNexusInstruction::ShareAccess { hash } => {
+                Self::process_share_access(program_id, accounts, hash)
+            }
+            _ => return Err(DataNexusError::InvalidInstruction.into()),
+        }
+
+        Ok(())
     }
 
     fn process_init_owner_account(program_id: Pubkey, accounts: &[AccountInfo]) -> ProgramResult {}

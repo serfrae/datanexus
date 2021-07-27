@@ -142,6 +142,7 @@ impl AdminInstruction {
         }
         buf
     }
+
     pub fn unpack(data: &[u8]) -> Result<Self, ProgramError> {
         let (tag, rest) = data.split_first().ok_or(InvalidInstruction)?;
 
