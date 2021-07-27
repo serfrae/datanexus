@@ -150,6 +150,8 @@ impl Processor {
             share_limit,
         }
         .pack_into_slice(dataset_account_data);
+
+        Ok(())
     }
 
     fn process_set_params(
@@ -158,6 +160,47 @@ impl Processor {
         hash: [u8; 32],
         params: Params,
     ) -> ProgramResult {
+        let accounts_iter = &mut accounts.iter();
+
+        let authority = next_account_info(accounts_iter)?;
+        let dataset_account = next_account_info(accounts_iter)?;
+
+        let dataset_account_data = dataset_account.data.borrow_mut();
+        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+
+        if authority.key != unpacked_dataset_data.owner {
+            msg!("Incorrect Dataset Owner");
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        match params {
+            Params::Init => {
+                let DatasetState {
+                    mut key,
+                    mut value,
+                    mut share_limit,
+                    mut ref_data,
+                    ..
+                } = unpacked_dataset_data;
+
+                key = Some(params.0);
+                value = Some(params.1);
+                share_limit = Some(params.2);
+                ref_data = match params.3 {
+                    Some(n) => Some(n),
+                    None => None,
+                };
+            }
+            Params::Key => unpacked_dataset_data.key = Some(params.0),
+            Params::Value => unpacked_dataset_data.value = Some(params.0),
+            Params::ShareLimit => unpacked_dataset_data.share_limit = Some(params.0),
+            Params::ReferenceData => unpacked_dataset_data.ref_data = Some(params.0),
+            _ => return Err(ProgramError::InvalidArgument),
+        }
+
+        unpacked_dataset_data.pack_into_slice(dataset_account_data);
+
+        Ok(())
     }
 
     fn process_purchase_access(
@@ -166,6 +209,53 @@ impl Processor {
         hash: [u8; 32],
         amount: u64,
     ) -> ProgramResult {
+        let accounts_iter = &mut accounts.iter();
+
+        let user_authority = next_account_info(accounts_iter)?;
+        let user_access_account = next_account_info(accounts_iter)?;
+        let user_token_account = next_account_info(accounts_iter)?;
+        let owner_authority = next_account_info(accounts_iter)?;
+        let owner_token_account = next_account_info(accounts_iter)?;
+        let dataset_account = next_account_info(accounts_iter)?;
+        let token_program = next_account_info(accounts_iter)?;
+
+        if token_program.key != spl_token::ID {
+            msg!("Incorrect token program ID");
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let transfer_ix = spl_token::instruction::transfer(
+            token_program.key,
+            user_token_account.key,
+            owner_token_account.key,
+            user_authority.key,
+            &[user_authority.key],
+            amount,
+        )?;
+
+        invoke(
+            &transfer_ix,
+            &[
+                user_token_account.clone(),
+                owner_token_account.clone(),
+                user_authority.clone(),
+                &[user_authority.clone()],
+            ],
+        )?;
+
+        let user_access_account_data = user_access_account.data.borrow_mut();
+        let unpacked_user_access_data = AccessState::unpack_from_slice(user_access_account_data)?;
+        let dataset_account_data = dataset_account.data.borrow();
+        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+        let new_access = AccessInfo {
+            hash,
+            key: unpacked_dataset_data.key,
+            shared_from: None,
+            share_limit: unpacked_dataset_data.share_limit,
+        }
+        .pack();
+
+        Ok(())
     }
 
     fn process_share_access(
@@ -173,5 +263,6 @@ impl Processor {
         accounts: &[AccountInfo],
         hash: [u8; 32],
     ) -> ProgramResult {
+        let accounts_iter = &mut accounts.iter();
     }
 }

@@ -160,9 +160,9 @@ pub struct DatasetState {
     pub is_initialized: bool,
     pub owner: Pubkey,
     pub hash: [u8; 32],
-    pub key: [u8; 32],
-    pub value: u64,
-    pub share_limit: u16,
+    pub key: Option<[u8; 32]>,
+    pub value: Option<u64>,
+    pub share_limit: Option<u16>,
 }
 
 impl IsInitialized for DatasetState {
