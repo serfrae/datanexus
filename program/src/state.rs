@@ -57,9 +57,12 @@ impl Pack for OwnerState {
             let dataset_vec = Vec::with_capacity(Self::LEN - 33);
             let mut offset = 33;
             while offset < Self::LEN {
-                dataset_vec.push(Pubkey::new_from_array(
-                    src[offset..offset + 32].try_into().unwrap(),
-                ));
+                dataset_vec.push(match src[offset..offset + 32].try_into().ok() {
+                    x if x = [0u8; 32] => None,
+                    _ => Some(Pubkey::new_from_array(
+                        src[offset..offset + 32].try_into().unwrap(),
+                    )),
+                });
                 offset += 32;
             }
             dataset_vec.collect()
