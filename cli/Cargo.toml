@@ -1,8 +1,22 @@
 [package]
-name = "cli"
+name = "datanexus-cli"
+description = "DataNexus CLI"
+author = ["Andrew Fraser <andrew@synchrony-labs.io>"]
 version = "0.1.0"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+datanexus = { version="0.1.0", path="../program", features=["no-entrypoint"] }
+datanexus-utils = { version="0.1.0", path="../utils" }
+solana-sdk = "1.7.8"
+solana-cli = "1.7.8"
+solana-cli-config = "1.7.8"
+solana-clap-utils = "1.7.8"
+solana-client = "1.7.8"
+spl-token = "3.2.0"
+spl-associated-token-account = "1.0.3"
+clap = "2.33.3"
+
+[[bin]]
+name = "dn-me"
+path = "src/main.rs"

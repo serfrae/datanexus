@@ -36,10 +36,9 @@ export const initDataAccountIx = async(
 	ownerAccount: PublicKey,
 	datasetAccount: PublicKey,
 	systemProgram: PublicKey,
-	hash: Array<Buffer | Uint8Array>,
+	hash: Uint8Array,
 ): Promise<TransactionInstruction> => {
 	const dataNexusProgramId = new PublicKey(DATANEXUS_PROGRAM_ID);
-	let buffers = [Buffer.from(Uint8Array.of(1)), Buffer.concat(hash)];
 	const initDataAccountIx = new TransactionInstruction({
 		programId: dataNexusProgramId,
 		keys: [
@@ -48,7 +47,7 @@ export const initDataAccountIx = async(
 			{ pubkey: datasetAccount, isSigner: false, isWritable: true },
 			{ pubkey: systemProgram, isSigner: false, isWritable: false },
 		],
-		data: Buffer.concat(buffers),
+		data: Buffer.from(Uint8Array.of(1, ...hash)),
 	});
 
 	return initDataAccountIx;
@@ -56,19 +55,18 @@ export const initDataAccountIx = async(
 
 export const setDataParams = async(
 	authority: PublicKey,
-	datasetAccount: PublicKey,
-	hash: Array<Buffer | Uint8Array>,
+	dataSetAccount: PublicKey,
+	hash: Uint8Array,
 	params: Params,
 ): Promise<TransactionInstruction> => {
 	const dataNexusProgramId = new PublicKey(DATANEXUS_PROGRAM_ID);
-	let buffers = [Buffer.from(Uint8Array.of(2)), Buffer.concat(hash)];
 	const setDataParamsIx = new TransactionInstruction({
 		programId: dataNexusProgramId,
 		keys: [
 			{ pubkey: authority, isSigner: true, isWritable: true },
 			{ pubkey: datasetAccount, isSigner: false, isWritable: true },
 		],
-		data: Buffer.concat(buffers),
+		data: Buffer.from(Uint8Array.of(2, ...hash)),
 	});
 
 	return setDataParamsIx;
@@ -82,11 +80,10 @@ export const purchaseAccess = async(
 	ownerTokenAccount: PublicKey,
 	datasetAccount: PublicKey,
 	tokenProgram: PublicKey,
-	hash: Array<Buffer | Uint8Array>,
-	amount: Numberu64,
+	hash: Uint8Array,
+	amount: number,
 ): Promise<TransactionInstruction> => {
 	const dataNexusProgramId = new PublicKey(DATANEXUS_PROGRAM_ID);
-	let buffers = [Buffer.from(Uint8Array.of(3)), Buffer.concat(hash), amount.toBuffer()];
 	const purchaseAccessIx = new TransactionInstruction({
 		programId: dataNexusProgramId,
 		keys: [
@@ -98,7 +95,7 @@ export const purchaseAccess = async(
 			{ pubkey: datasetAccount, isSigner: false, isWritable: false },
 			{ pubkey: tokenProgram, isSigner: false, isWritable: false },
 		],
-		data: buffers,
+		data: Buffer.from(Uint8Array.of(3, ...hash, ...amount))
 	});
 
 	return purchaseAccessIx;
@@ -110,10 +107,9 @@ export const shareAccess = async(
 	recipientAuthority: PublicKey,
 	recipientAccessAccount: PublicKey,
 	datasetAccount: PublicKey,
-	hash: Array<Buffer | Uint8Array>,
+	hash: Uint8Array,
 ): Promise<TransactionInstruction> => {
 	const dataNexusProgramId = new PublicKey(DATANEXUS_PROGRAM_ID);
-	let buffers = [Buffer.from(Uint8Array.of(4)), Buffer.concat(hash)];
 	const shareAccessIx = new TransactionInstruction({
 		programId: dataNexusProgramId,
 		keys: [
@@ -123,7 +119,7 @@ export const shareAccess = async(
 			{ pubkey: recipientAccessAccount, isSigner: false, isWritable: true },
 			{ pubkey: datasetAccount, isSigner: false, isWritable: false },
 		],
-		data: Buffer.concat(buffers),
+		data: Buffer.from(Uint8Array.of(4, ...hash)),
 	});
 
 	return shareAccessIx;
