@@ -1,6 +1,6 @@
 [package]
 name = "datanexus-utils"
-author = ["Andrew Fraser <andrew@synchrony-labs.io>"]
+authors = ["Andrew Fraser<andrew@synchrony-labs.io>"]
 version = "0.1.0"
 edition = "2018"
 

@@ -22,7 +22,7 @@ use datanexus::{
         init_data_account, init_user_account, purchase_access, set_data_params, share_access,
         AccountType, Params,
     },
-    state::DatasetState,
+    state::AccountState,
 };
 
 use datanexus_utils::*;
@@ -120,7 +120,7 @@ fn command_purchase_access(
         .get_account_data(&dataset_account)
         .unwrap()
         .clone();
-    let dataset_state = DatasetState::unpack_from_slice(&dataset_buf)?;
+    let dataset_state = AccountState::unpack_from_slice(&dataset_buf)?;
     let owner_token_account = get_associated_token_address(&dataset_state.owner, &token_mint);
 
     let instructions = [purchase_access(

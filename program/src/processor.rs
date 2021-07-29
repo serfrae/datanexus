@@ -57,7 +57,7 @@ impl Processor {
         let rent = Rent::get();
 
         let state_size = if account_type == AccountType::Owner {
-            OwnerState::LEN
+            AccountIndex::LEN
         } else {
             AccessState::LEN
         };
@@ -81,7 +81,7 @@ impl Processor {
         let datasets: [Option<_>; 128] = [None; 128];
 
         if account_type == AccountType::Owner {
-            OwnerState {
+            AccountIndex {
                 is_initialized,
                 pointer,
                 datasets,
@@ -115,8 +115,8 @@ impl Processor {
         let create_account_ix = create_account(
             authority.key,
             dataset_account.key,
-            rent.minimum_balance(DatasetState::LEN),
-            DatasetState::LEN,
+            rent.minimum_balance(AccountState::LEN),
+            AccountState::LEN,
             program_id,
         );
 
@@ -126,7 +126,7 @@ impl Processor {
         )?;
 
         let owner_account_data = owner_account.data.borrow_mut();
-        let unpacked_owner_account_data = OwnerState::unpack_from_slice(owner_account_data)?;
+        let unpacked_owner_account_data = AccountIndex::unpack_from_slice(owner_account_data)?;
 
         unpacked_owner_account_data
             .datasets
@@ -141,7 +141,7 @@ impl Processor {
         let value = None;
         let share_limit = None;
 
-        DatasetState {
+        AccountState {
             is_initialized,
             owner,
             hash,
@@ -166,7 +166,7 @@ impl Processor {
         let dataset_account = next_account_info(accounts_iter)?;
 
         let dataset_account_data = dataset_account.data.borrow_mut();
-        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+        let unpacked_dataset_data = AccountState::unpack_from_slice(dataset_account_data)?;
 
         if authority.key != unpacked_dataset_data.owner {
             msg!("Incorrect Dataset Owner");
@@ -175,7 +175,7 @@ impl Processor {
 
         match params {
             Params::Init => {
-                let DatasetState {
+                let AccountState {
                     mut key,
                     mut value,
                     mut share_limit,
@@ -246,7 +246,7 @@ impl Processor {
         let user_access_account_data = user_access_account.data.borrow_mut();
         let unpacked_user_access_data = AccessState::unpack_from_slice(user_access_account_data)?;
         let dataset_account_data = dataset_account.data.borrow();
-        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+        let unpacked_dataset_data = AccountState::unpack_from_slice(dataset_account_data)?;
         let new_access = AccessInfo {
             hash,
             key: unpacked_dataset_data.key,
@@ -272,7 +272,7 @@ impl Processor {
         let dataset_account = next_account_info(accounts_iter)?;
 
         let dataset_account_data = dataset_account.data.borrow();
-        let unpacked_dataset_data = DatasetState::unpack_from_slice(dataset_account_data)?;
+        let unpacked_dataset_data = AccountState::unpack_from_slice(dataset_account_data)?;
         let user_access_data = user_access_account.data.borrow_mut();
         let unpacked_user_access_data = AccessState::unpack_from_slice(user_access_account_data)?;
         let recipient_access_data = recipient_access_account.data.borrow_mut();
