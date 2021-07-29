@@ -20,7 +20,7 @@ use datanexus::{
     datanexus_program,
     instruction::{
         init_data_account, init_user_account, purchase_access, set_data_params, share_access,
-        AccountType,
+        AccountType, Params,
     },
     state::DatasetState,
 };
@@ -141,12 +141,7 @@ fn command_purchase_access(
     println!("purchase test");
 }
 
-fn command_share_access(
-    config: &Config,
-    user_authority: Pubkey,
-    recipient_authority: Pubkey,
-    hash: [u8; 32],
-) {
+fn command_share_access(config: &Config, recipient_authority: Pubkey, hash: [u8; 32]) {
     let dataset_address = get_dataset_address(&hash);
     let user_associated_access_account =
         get_associated_access_address(config.payer.pubkey().as_ref(), dataset_address.as_ref());
@@ -228,14 +223,21 @@ fn main() {
                         ),
                 )
                 .arg(
+                    Arg::with_name("authority")
+                        .short("a")
+                        .long("authority")
+                        .value_name("PUBKEY")
+                        .validator(is_pubkey)
+                        .takes_value(true)
+                        .help("Public Key of the owner of the created account"),
+                )
+                .arg(
                     Arg::with_name("hash")
                         .short("h")
                         .long("hash")
                         .validator(is_hash)
                         .value_name("HASH")
                         .takes_value(true)
-                        .required(false)
-                        .index(2)
                         .help("Hash for dataset accounts"),
                 ),
         )
@@ -271,7 +273,7 @@ fn main() {
                         .help("Value of target dataset in USD"),
                 )
                 .arg(
-                    Arg::with_name("share limit")
+                    Arg::with_name("share_limit")
                         .short("l")
                         .long("share-limit")
                         .value_name("AMOUNT")
@@ -358,10 +360,7 @@ fn main() {
         let rpc_url = &cli_config.json_rpc_url;
         let default_signer_arg_name = "owner".to_string();
         let default_signer_path = cli_config.keypair_path.clone();
-        let default_signer = DefaultSigner {
-            path: default_signer_path,
-            arg_name: default_signer_arg_name,
-        };
+        let default_signer = DefaultSigner::new(default_signer_arg_name, default_signer_path);
 
         let payer = {
             let config = SignerFromPathConfig {
@@ -383,10 +382,61 @@ fn main() {
     };
 
     match (sub_command, sub_matches) {
-        ("create", Some(args)) => {}
-        ("set", Some(args)) => {}
-        ("purchse_access", Some(args)) => {}
-        ("share_access", Some(args)) => {}
+        ("create", Some(args)) => {
+            let authority = if let Some(pubkey) = value_of(args, "authority") {
+                pubkey
+            } else {
+                config.payer.pubkey()
+            };
+            match value_of(args, "account_type").unwrap() {
+                "owner" => command_init_user_account(config, authority, AccountType::Owner),
+                "access" => command_init_user_account(config, authority, AccountType::Access),
+                _ => command_init_data_account(config, hash),
+            };
+        }
+        ("set", Some(args)) => {
+            let hash = value_of(args, "hash").unwrap();
+            let key = if let Some(key) = value_of(args, "key") {
+                key
+            } else {
+                None
+            };
+            let value = if let Some(value) = value_of(args, "value") {
+                value
+            } else {
+                None
+            };
+            let share_limit = if let Some(share_limit) = value_of(args, "share_limit") {
+                share_limit
+            } else {
+                None
+            };
+            let ref_data = if let Some(ref_data) = value_of(args, "reference_data") {
+                ref_data
+            } else {
+                None
+            };
+
+            let params = match (key, value, share_limit, ref_data) {
+                (key, None, None, None) => Params::Key(key),
+                (None, value, None, None) => Params::Value(value),
+                (None, None, share_limit, None) => Params::ShareLimit(share_limit),
+                (None, None, None, ref_data) => Params::ReferenceData(ref_data),
+                _ => Params::Init(key, value, share_limit, ref_data),
+            };
+
+            command_set_data_params(config, hash, params);
+        }
+        ("purchse_access", Some(args)) => {
+            let hash = value_of(args, "hash").unwrap();
+            let value = value_of(args, "amount").unwrap();
+            command_purchase_access(config, hash, value);
+        }
+        ("share_access", Some(args)) => {
+            let hash = value_of(args, "hash").unwrap();
+            let recipient = pubkey_of(args, "recipient").unwrap();
+            command_share_access(config, recipient, hash);
+        }
         _ => unreachable!(),
     };
 }
