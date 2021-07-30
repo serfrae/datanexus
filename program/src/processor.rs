@@ -24,8 +24,8 @@ impl Processor {
         let instruction = DataNexusInstruction::unpack(data)?;
 
         match instruction {
-            DataNexusInstruction::InitUserAccount(account_type) => {
-                Self::process_init_user_account(program_id, accounts, account_type)
+            DataNexusInstruction::InitIndexAccount(account_type) => {
+                Self::process_init_index_account(program_id, accounts, account_type)
             }
             DataNexusInstruction::InitDataAccount { hash } => {
                 Self::process_init_data_account(program_id, accounts, hash)
@@ -45,14 +45,14 @@ impl Processor {
         Ok(())
     }
 
-    fn process_init_user_account(
+    fn process_init_index_account(
         program_id: Pubkey,
         accounts: &[AccountInfo],
         account_type: AccountType,
     ) -> ProgramResult {
         let accounts_iter = &mut accounts.iter();
         let payer = next_account_info(accounts_iter)?;
-        let user_account = next_account_info(accounts_iter)?;
+        let index_account = next_account_info(accounts_iter)?;
         let system_program = next_account_info(accounts_iter)?;
         let rent = Rent::get();
 
@@ -64,7 +64,7 @@ impl Processor {
 
         let create_account_ix = create_account(
             payer.key,
-            user_account.key,
+            index_account.key,
             rent.mininum_balance(state_size),
             state_size,
             program_id,
@@ -75,7 +75,7 @@ impl Processor {
             &[system_program.clone(), payer.clone(), owner_account.clone()],
         )?;
 
-        let account_data = user_account.data.borrow_mut();
+        let account_data = index_account.data.borrow_mut();
         let is_initialized = true;
         let pointer = None;
         let datasets: [Option<_>; 128] = [None; 128];

@@ -1,5 +1,5 @@
 use solana_sdk::{
-    self, hash::hashv, msg, program_pack::Pack, pubkey::Pubkey, signature::Signer, system_program,
+    self, program_pack::Pack, pubkey::Pubkey, signature::Signer, system_program,
     transaction::Transaction,
 };
 
@@ -19,7 +19,7 @@ use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg, 
 use datanexus::{
     datanexus_program,
     instruction::{
-        init_data_account, init_user_account, purchase_access, set_data_params, share_access,
+        init_data_account, init_index_account, purchase_access, set_data_params, share_access,
         AccountType, Params,
     },
     state::AccountState,
@@ -43,25 +43,25 @@ fn sign_and_send_transaction(config: &Config, instructions: [Instruction]) -> Si
         .unwrap();
 }
 
-fn command_init_user_account(config: &Config, authority: Pubkey, account_type: AccountType) {
-    let user_account = if account_type == AccountType::Owner {
+fn command_init_index_account(config: &Config, authority: Pubkey, account_type: AccountType) {
+    let index_account = if account_type == AccountType::Owner {
         create_owner_address(authority)
     } else {
         create_access_address(authority)
     };
 
-    let instructions = [init_user_account(
+    let instructions = [init_index_account(
         datanexus_program,
         config.payer.pubkey(),
         authority,
-        user_account,
+        index_account,
         system_program,
         account_type,
     )?];
 
     let signature = sign_and_send_transaction(config, instructions);
 
-    println!("User {} Account Created: {}", account_type, user_account);
+    println!("User {} Account Created: {}", account_type, index_account);
     println!("Transaction Signature: {}", signature);
 }
 
@@ -389,8 +389,8 @@ fn main() {
                 config.payer.pubkey()
             };
             match value_of(args, "account_type").unwrap() {
-                "owner" => command_init_user_account(config, authority, AccountType::Owner),
-                "access" => command_init_user_account(config, authority, AccountType::Access),
+                "owner" => command_init_index_account(config, authority, AccountType::Owner),
+                "access" => command_init_index_account(config, authority, AccountType::Access),
                 _ => command_init_data_account(config, hash),
             };
         }
